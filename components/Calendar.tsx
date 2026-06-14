@@ -87,6 +87,21 @@ export default function Calendar() {
     };
   }, [fetchSignups, days]);
 
+  // Mobile browsers suspend the realtime socket while the app is backgrounded,
+  // so events are missed. Refetch whenever it returns to the foreground (e.g.
+  // when opened from a push notification) to avoid showing stale data.
+  useEffect(() => {
+    const refresh = () => {
+      if (document.visibilityState === "visible") fetchSignups();
+    };
+    document.addEventListener("visibilitychange", refresh);
+    window.addEventListener("focus", refresh);
+    return () => {
+      document.removeEventListener("visibilitychange", refresh);
+      window.removeEventListener("focus", refresh);
+    };
+  }, [fetchSignups]);
+
   // Offer notifications once, right after the name is set — but only when the
   // browser can actually subscribe and we haven't asked on this device before.
   useEffect(() => {

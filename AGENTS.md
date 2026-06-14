@@ -61,6 +61,9 @@ per period" is structural, not enforced in code.
   vars and no-op when missing (show setup help / hide push). Keep that.
 - **Realtime + refetch.** After a mutation, code refetches as a fallback in case
   realtime is off. Keep mutations going through `Calendar`'s `run()` helper.
+  Mobile browsers suspend the realtime socket while backgrounded, so `Calendar`
+  also refetches on `visibilitychange`/`focus` (e.g. when opened from a push) —
+  don't remove that, it's why data isn't stale after returning to the app.
 
 ## Dev workflow
 
