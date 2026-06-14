@@ -6,6 +6,7 @@ import { PEOPLE_PER_COURT } from "@/lib/types";
 import { avatarColor, initials } from "@/lib/avatar";
 import { courtsFor, isSameName } from "@/lib/players";
 import { PERIOD_META } from "@/lib/periods";
+import { slotStatus } from "@/lib/slots";
 
 /** Selectable times, every 30 min from 07:00 to 23:30. */
 const TIME_OPTIONS: string[] = [];
@@ -21,6 +22,7 @@ interface Props {
   period: Period;
   signups: Signup[];
   myName: string;
+  now: Date;
   disabled?: boolean;
   busy?: boolean;
   onCreate: (time: string) => void;
@@ -33,6 +35,7 @@ export default function SlotCard({
   period,
   signups,
   myName,
+  now,
   disabled = false,
   busy = false,
   onCreate,
@@ -59,9 +62,17 @@ export default function SlotCard({
     chunks.push(signups.slice(i, i + PEOPLE_PER_COURT));
   }
 
+  // Once the match time has passed: played (>=4) or cancelled (<4). No actions then.
+  const status = occupied
+    ? slotStatus(signups[0].date, matchTime, count, now)
+    : "empty";
+  const cancelled = status === "cancelled";
+  const played = status === "played";
+  const closed = disabled || cancelled || played;
+
   // Empty future slot → show the time selector right away to create the match.
-  const creating = !occupied && !disabled;
-  const showEditor = creating || editingTime;
+  const creating = !occupied && !closed;
+  const showEditor = creating || (editingTime && !closed);
 
   const confirmTime = () => {
     if (!timeInput) return;
@@ -82,20 +93,37 @@ export default function SlotCard({
           <span className="text-2xl">{cfg.icon}</span>
           <span className="text-lg font-semibold text-slate-900">{cfg.label}</span>
         </div>
-        {matchTime && !editingTime && (
+        {matchTime && !editingTime && !closed && (
           <button
             onClick={() => {
               setTimeInput(matchTime);
               setEditingTime(true);
             }}
-            disabled={disabled || busy}
+            disabled={busy}
             className="rounded-full bg-slate-900 px-4 py-2 text-base font-bold text-white disabled:opacity-50"
             title="Cambiar la hora"
           >
             🕒 {matchTime}
           </button>
         )}
+        {matchTime && closed && (
+          <span className="text-base font-bold text-slate-500">
+            🕒 {matchTime}
+          </span>
+        )}
       </div>
+
+      {/* Status banner once the match time has passed */}
+      {cancelled && (
+        <div className="mt-3 rounded-xl bg-red-50 px-4 py-2 text-base font-semibold text-red-700">
+          🚫 Cancelado · no se llegó a 4 jugadores
+        </div>
+      )}
+      {played && (
+        <div className="mt-3 rounded-xl bg-emerald-50 px-4 py-2 text-base font-semibold text-emerald-700">
+          ✅ Partido jugado
+        </div>
+      )}
 
       {/* Time selector (creating a match, or editing the time of an existing one) */}
       {showEditor && (
@@ -174,7 +202,7 @@ export default function SlotCard({
                             </span>
                           )}
                         </span>
-                        {mine && !disabled && (
+                        {mine && !closed && (
                           <button
                             onClick={() => onLeave(s.id)}
                             disabled={busy}
@@ -218,9 +246,7 @@ export default function SlotCard({
             : ""}
         </span>
 
-        {disabled ? (
-          <span className="text-sm text-slate-600">Pasado</span>
-        ) : occupied && !amIIn ? (
+        {!closed && occupied && !amIIn ? (
           <button
             onClick={onJoin}
             disabled={busy}

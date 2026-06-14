@@ -269,6 +269,7 @@ export default function Calendar() {
               period={openSlot.period}
               signups={slotSignups(openISO, openSlot.period)}
               myName={name}
+              now={today!}
               disabled={isPast(openSlot.day, today!)}
               busy={busy}
               onCreate={(time) => createMatch(openISO, openSlot.period, time)}
@@ -382,6 +383,7 @@ export default function Calendar() {
                   period={period}
                   signups={slotSignups(dateISO, period)}
                   myName={name}
+                  now={today!}
                   disabled={past}
                   onClick={() => setOpenSlot({ day, period })}
                 />

@@ -14,6 +14,9 @@ notificaciones push opcionales.
   4, 6, 8… (varias pistas). En el detalle se agrupan por pista de 4.
 - Tu **nombre se recuerda** en el navegador.
 - Los cambios aparecen **en tiempo real** para todos.
+- Cuando **pasa la hora** del partido: si no se llegó a 4 se marca
+  **Cancelado**; con 4 o más, **Jugado**. Al pasar la hora se bloquean las
+  acciones (apuntarse, crear, cambiar hora).
 - **Notificaciones push** opcionales: cuando alguien se apunta, el resto recibe
   un aviso (aunque tengan la app cerrada).
 
@@ -86,6 +89,7 @@ lib/
   dates.ts          utilidades de fechas / semanas (en hora local, no UTC)
   periods.ts        metadatos de mañana/tarde (label, icon, colores) — fuente única
   players.ts        helpers de jugador (isSameName, courtsFor)
+  slots.ts          estado del turno (upcoming/played/cancelled) según hora + nº
   avatar.ts         iniciales + color determinista por nombre
   types.ts          tipos compartidos
 public/

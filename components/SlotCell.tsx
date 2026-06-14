@@ -4,11 +4,13 @@ import type { Period, Signup } from "@/lib/types";
 import { avatarColor, initials } from "@/lib/avatar";
 import { isSameName } from "@/lib/players";
 import { PERIOD_META } from "@/lib/periods";
+import { slotStatus } from "@/lib/slots";
 
 interface Props {
   period: Period;
   signups: Signup[];
   myName: string;
+  now: Date;
   disabled?: boolean;
   onClick: () => void;
 }
@@ -20,6 +22,7 @@ export default function SlotCell({
   period,
   signups,
   myName,
+  now,
   disabled = false,
   onClick,
 }: Props) {
@@ -28,8 +31,16 @@ export default function SlotCell({
   const time = occupied ? signups[0].match_time : null;
   const amIIn = signups.some((s) => isSameName(s.name, myName));
 
+  const status = occupied
+    ? slotStatus(signups[0].date, time, count, now)
+    : "empty";
+  const cancelled = status === "cancelled";
+
+  const muted = disabled || cancelled;
+
   let cls = "border-slate-200 bg-white";
-  if (disabled) cls = "border-slate-100 bg-slate-50";
+  if (cancelled) cls = "border-slate-200 bg-slate-50";
+  else if (disabled) cls = "border-slate-100 bg-slate-50";
   else if (amIIn) cls = "border-emerald-400 bg-emerald-50 ring-1 ring-emerald-300";
   else if (occupied) cls = PERIOD_META[period].cellTint;
 
@@ -44,17 +55,28 @@ export default function SlotCell({
     >
       {occupied ? (
         <>
-          <span
-            className={`flex items-center gap-1 text-base font-bold leading-none ${
-              disabled ? "text-slate-500" : "text-slate-900"
-            }`}
-          >
-            {amIIn && (
+          <span className="flex items-center gap-1 overflow-hidden whitespace-nowrap text-base font-bold leading-none">
+            {amIIn && !cancelled && (
               <span className="text-emerald-600" title="Estás apuntado">
                 ✓
               </span>
             )}
-            {time}
+            <span
+              className={
+                cancelled
+                  ? "text-slate-400 line-through"
+                  : disabled
+                    ? "text-slate-500"
+                    : "text-slate-900"
+              }
+            >
+              {time}
+            </span>
+            {cancelled && (
+              <span className="text-xs font-medium text-rose-400">
+                Cancelado
+              </span>
+            )}
           </span>
           <div className="flex items-center">
             {shown.map((s, i) => {
@@ -66,7 +88,7 @@ export default function SlotCell({
                   className={`flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold text-white ring-2 ${
                     mine ? "ring-emerald-500" : "ring-white"
                   } ${avatarColor(s.name)} ${i > 0 ? "-ml-2" : ""} ${
-                    disabled ? "opacity-60" : ""
+                    muted ? "opacity-60" : ""
                   }`}
                 >
                   {initials(s.name)}
