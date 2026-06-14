@@ -100,7 +100,10 @@ export async function notifyNewSignup(payload: {
   const notification = JSON.stringify({
     title: `🎾 ${payload.signerName} se ha apuntado`,
     body,
-    url: "/",
+    // Deep-link straight to the slot that changed.
+    url: `/?date=${payload.dateISO}&period=${payload.period}`,
+    date: payload.dateISO,
+    period: payload.period,
     tag: `${payload.dateISO}-${payload.period}`,
   });
 

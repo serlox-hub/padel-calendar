@@ -37,6 +37,13 @@ whoever (human or agent) edits the code next.
   and the hook that registers `/sw.js` and stores the subscription.
 - `app/actions.ts` — **Server Actions** for push: `subscribeUser`,
   `unsubscribeUser`, `notifyNewSignup`. Uses `VAPID_PRIVATE_KEY` (server only).
+- **Notification deep-links.** `notifyNewSignup` puts the slot's `date`/`period`
+  in the push payload + a `/?date=&period=` url. `public/sw.js` `notificationclick`
+  either focuses an open tab and `postMessage`s `{type:"open-slot",date,period}`
+  (no reload) or opens the deep-link url when closed. `Calendar` reads the query
+  params on cold open (then strips them via `replaceState`) and listens for the
+  SW message when warm — both call `openSlotByDate`, which switches week via
+  `weekOffsetBetween` and opens the slot modal.
 - `lib/` — `supabase.ts` (client), `dates.ts` (week math, **local time**),
   `avatar.ts` (deterministic initials+colour), `types.ts`.
 - `supabase/schema.sql` — tables, RLS, realtime. Idempotent; re-runnable.

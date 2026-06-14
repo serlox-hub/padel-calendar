@@ -12,6 +12,7 @@ import {
   toISODate,
   weekdayLabel,
   weekdayShort,
+  weekOffsetBetween,
 } from "@/lib/dates";
 import { PERIODS, PERIOD_META } from "@/lib/periods";
 import NameGate from "./NameGate";
@@ -113,6 +114,53 @@ export default function Calendar() {
       setAskPush(true);
     }
   }, [name, push.state]);
+
+  // Jump to a given slot, switching to whatever week contains it. Used by the
+  // notification deep-links (both the cold-open query params and the live
+  // service-worker message when the app is already foregrounded).
+  const openSlotByDate = useCallback(
+    (dateISO: string, period: Period) => {
+      // Anchor at midday so the date never slips across a timezone boundary.
+      const day = new Date(`${dateISO}T12:00:00`);
+      if (!today || Number.isNaN(day.getTime())) return;
+      setWeekOffset(weekOffsetBetween(today, day));
+      setOpenSlot({ day, period });
+    },
+    [today]
+  );
+
+  // Cold open from a push notification: read the deep-link query params once the
+  // user has a name (the slot modal only renders then), then strip them so a
+  // manual refresh doesn't reopen the slot.
+  useEffect(() => {
+    if (!today || !name) return;
+    const params = new URLSearchParams(window.location.search);
+    const date = params.get("date");
+    const period = params.get("period");
+    if (date && (period === "morning" || period === "afternoon")) {
+      openSlotByDate(date, period);
+      window.history.replaceState(null, "", window.location.pathname);
+    }
+  }, [today, name, openSlotByDate]);
+
+  // Warm open: the service worker tells us which slot to show when the app was
+  // already running and got focused from a notification click.
+  useEffect(() => {
+    if (!("serviceWorker" in navigator)) return;
+    const onMessage = (e: MessageEvent) => {
+      const d = e.data;
+      if (
+        d?.type === "open-slot" &&
+        d.date &&
+        (d.period === "morning" || d.period === "afternoon")
+      ) {
+        openSlotByDate(d.date, d.period);
+      }
+    };
+    navigator.serviceWorker.addEventListener("message", onMessage);
+    return () =>
+      navigator.serviceWorker.removeEventListener("message", onMessage);
+  }, [openSlotByDate]);
 
   const dismissPush = () => {
     localStorage.setItem(PUSH_ASKED_KEY, "1");

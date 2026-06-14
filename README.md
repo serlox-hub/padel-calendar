@@ -18,7 +18,8 @@ notificaciones push opcionales.
   **Cancelado**; con 4 o más, **Jugado**. Al pasar la hora se bloquean las
   acciones (apuntarse, crear, cambiar hora).
 - **Notificaciones push** opcionales: cuando alguien se apunta, el resto recibe
-  un aviso (aunque tengan la app cerrada).
+  un aviso (aunque tengan la app cerrada). Al tocar el aviso, la app abre
+  directamente el turno correspondiente.
 
 ## Stack
 
@@ -93,7 +94,7 @@ lib/
   avatar.ts         iniciales + color determinista por nombre
   types.ts          tipos compartidos
 public/
-  sw.js             service worker (muestra las notificaciones push)
+  sw.js             service worker (muestra las push y abre el turno al tocarlas)
 supabase/
   schema.sql        tablas + RLS + realtime (idempotente)
 ```

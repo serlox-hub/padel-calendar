@@ -18,6 +18,14 @@ export function startOfWeekMonday(d: Date): Date {
   return date;
 }
 
+/** Whole-week offset from the week containing `today` to the one containing `target`. */
+export function weekOffsetBetween(today: Date, target: Date): number {
+  const a = startOfWeekMonday(today).getTime();
+  const b = startOfWeekMonday(target).getTime();
+  // Round to absorb the ±1h that a DST boundary adds to a 7-day span.
+  return Math.round((b - a) / (7 * 24 * 60 * 60 * 1000));
+}
+
 /** 7 Dates (Mon..Sun) for the week `weekOffset` weeks away from `today`. */
 export function getWeek(today: Date, weekOffset: number): Date[] {
   const start = startOfWeekMonday(today);
