@@ -14,10 +14,15 @@ import {
   weekdayShort,
 } from "@/lib/dates";
 import NameGate from "./NameGate";
+import PushToggle from "./PushToggle";
+import PushPrompt from "./PushPrompt";
 import SlotCard from "./SlotCard";
 import SlotCell from "./SlotCell";
+import { usePushSubscription } from "./usePushSubscription";
+import { notifyNewSignup } from "@/app/actions";
 
 const NAME_KEY = "padel-name";
+const PUSH_ASKED_KEY = "padel-push-asked";
 const PERIODS: Period[] = ["morning", "afternoon"];
 
 export default function Calendar() {
@@ -32,6 +37,8 @@ export default function Calendar() {
   const [openSlot, setOpenSlot] = useState<{ day: Date; period: Period } | null>(
     null
   );
+  const [askPush, setAskPush] = useState(false);
+  const push = usePushSubscription(name ?? "");
 
   // Run once on the client to avoid SSR/hydration mismatches with Date & localStorage.
   useEffect(() => {
@@ -80,6 +87,28 @@ export default function Calendar() {
     };
   }, [fetchSignups, days]);
 
+  // Offer notifications once, right after the name is set — but only when the
+  // browser can actually subscribe and we haven't asked on this device before.
+  useEffect(() => {
+    if (
+      name &&
+      push.state === "default" &&
+      !localStorage.getItem(PUSH_ASKED_KEY)
+    ) {
+      setAskPush(true);
+    }
+  }, [name, push.state]);
+
+  const dismissPush = () => {
+    localStorage.setItem(PUSH_ASKED_KEY, "1");
+    setAskPush(false);
+  };
+
+  const acceptPush = async () => {
+    await push.subscribe();
+    dismissPush();
+  };
+
   const saveName = (n: string) => {
     localStorage.setItem(NAME_KEY, n);
     setName(n);
@@ -91,8 +120,10 @@ export default function Calendar() {
     [signups]
   );
 
-  const run = async (fn: () => Promise<{ error: { message: string } | null }>) => {
-    if (busy) return;
+  const run = async (
+    fn: () => Promise<{ error: { message: string } | null }>
+  ) => {
+    if (busy) return { error: null as { message: string } | null };
     setBusy(true);
     setError(null);
     const { error } = await fn();
@@ -105,27 +136,41 @@ export default function Calendar() {
     }
     await fetchSignups();
     setBusy(false);
+    return { error };
   };
 
-  const createMatch = (dateISO: string, period: Period, time: string) =>
-    run(async () => {
+  // Fire a push to everyone (fire-and-forget — never block the UI on it).
+  const announce = (dateISO: string, period: Period, matchTime: string) => {
+    if (!name) return;
+    notifyNewSignup({ signerName: name, dateISO, period, matchTime }).catch(
+      () => {}
+    );
+  };
+
+  const createMatch = async (dateISO: string, period: Period, time: string) => {
+    const { error } = await run(async () => {
       if (!supabase) return { error: null };
       return supabase
         .from("signups")
         .insert({ date: dateISO, period, name, match_time: time });
     });
+    if (!error) announce(dateISO, period, time);
+  };
 
-  const joinMatch = (dateISO: string, period: Period) =>
-    run(async () => {
+  const joinMatch = async (dateISO: string, period: Period) => {
+    const existing = slotSignups(dateISO, period)[0];
+    const matchTime = existing?.match_time ?? "00:00";
+    const { error } = await run(async () => {
       if (!supabase) return { error: null };
-      const existing = slotSignups(dateISO, period)[0];
       return supabase.from("signups").insert({
         date: dateISO,
         period,
         name,
-        match_time: existing?.match_time ?? "00:00",
+        match_time: matchTime,
       });
     });
+    if (!error) announce(dateISO, period, matchTime);
+  };
 
   const leaveMatch = (id: string) =>
     run(async () => {
@@ -176,6 +221,14 @@ export default function Calendar() {
         />
       )}
 
+      {askPush && (
+        <PushPrompt
+          busy={push.busy}
+          onAccept={acceptPush}
+          onDismiss={dismissPush}
+        />
+      )}
+
       {/* Slot detail */}
       {openSlot && openISO && (
         <div
@@ -218,13 +271,21 @@ export default function Calendar() {
           <h1 className="flex items-center gap-2 text-lg font-bold text-slate-900">
             🎾 No puedo, tengo pádel
           </h1>
-          <button
-            onClick={() => setEditingName(true)}
-            aria-label="Cambiar mi nombre"
-            className="rounded-full bg-slate-100 px-4 py-2 text-base text-slate-700"
-          >
-            {name} ✎
-          </button>
+          <div className="flex items-center gap-2">
+            <PushToggle
+              state={push.state}
+              busy={push.busy}
+              subscribe={push.subscribe}
+              unsubscribe={push.unsubscribe}
+            />
+            <button
+              onClick={() => setEditingName(true)}
+              aria-label="Cambiar mi nombre"
+              className="rounded-full bg-slate-100 px-4 py-2 text-base text-slate-700"
+            >
+              {name} ✎
+            </button>
+          </div>
         </div>
 
         {/* Week navigator */}
