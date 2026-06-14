@@ -4,6 +4,8 @@ import { useState } from "react";
 import type { Period, Signup } from "@/lib/types";
 import { PEOPLE_PER_COURT } from "@/lib/types";
 import { avatarColor, initials } from "@/lib/avatar";
+import { courtsFor, isSameName } from "@/lib/players";
+import { PERIOD_META } from "@/lib/periods";
 
 /** Selectable times, every 30 min from 07:00 to 23:30. */
 const TIME_OPTIONS: string[] = [];
@@ -14,26 +16,6 @@ for (let h = 7; h <= 23; h++) {
     );
   }
 }
-
-const PERIOD_CONFIG: Record<
-  Period,
-  { label: string; icon: string; defaultTime: string; ring: string; bg: string }
-> = {
-  morning: {
-    label: "Mañana",
-    icon: "🌅",
-    defaultTime: "09:30",
-    ring: "focus:border-amber-500 focus:ring-amber-200",
-    bg: "bg-amber-50",
-  },
-  afternoon: {
-    label: "Tarde",
-    icon: "🌇",
-    defaultTime: "18:00",
-    ring: "focus:border-indigo-500 focus:ring-indigo-200",
-    bg: "bg-indigo-50",
-  },
-};
 
 interface Props {
   period: Period;
@@ -58,18 +40,16 @@ export default function SlotCard({
   onLeave,
   onEditTime,
 }: Props) {
-  const cfg = PERIOD_CONFIG[period];
+  const cfg = PERIOD_META[period];
   const [editingTime, setEditingTime] = useState(false);
   const [timeInput, setTimeInput] = useState(cfg.defaultTime);
 
   const occupied = signups.length > 0;
   const matchTime = occupied ? signups[0].match_time : null;
   const count = signups.length;
-  const amIIn = signups.some(
-    (s) => s.name.toLowerCase() === myName.toLowerCase()
-  );
+  const amIIn = signups.some((s) => isSameName(s.name, myName));
 
-  const courts = Math.ceil(count / PEOPLE_PER_COURT) || 0;
+  const courts = courtsFor(count);
   const remainder = count % PEOPLE_PER_COURT;
   const needed = remainder === 0 ? 0 : PEOPLE_PER_COURT - remainder;
 
@@ -93,7 +73,7 @@ export default function SlotCard({
   return (
     <div
       className={`rounded-2xl border border-slate-200 ${
-        occupied ? "bg-white" : cfg.bg
+        occupied ? "bg-white" : cfg.cardBg
       } p-4 shadow-sm`}
     >
       {/* Header */}
@@ -126,7 +106,7 @@ export default function SlotCard({
           <select
             value={timeInput}
             onChange={(e) => setTimeInput(e.target.value)}
-            className={`w-full rounded-xl border border-slate-300 bg-white px-3 py-3 text-lg outline-none focus:ring-2 ${cfg.ring}`}
+            className={`w-full rounded-xl border border-slate-300 bg-white px-3 py-3 text-lg outline-none focus:ring-2 ${cfg.focusRing}`}
           >
             {TIME_OPTIONS.map((t) => (
               <option key={t} value={t}>
@@ -171,8 +151,7 @@ export default function SlotCard({
                 </div>
                 <div className="space-y-1">
                   {players.map((s) => {
-                    const mine =
-                      s.name.toLowerCase() === myName.toLowerCase();
+                    const mine = isSameName(s.name, myName);
                     return (
                       <div
                         key={s.id}

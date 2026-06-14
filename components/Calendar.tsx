@@ -13,6 +13,7 @@ import {
   weekdayLabel,
   weekdayShort,
 } from "@/lib/dates";
+import { PERIODS, PERIOD_META } from "@/lib/periods";
 import NameGate from "./NameGate";
 import PushToggle from "./PushToggle";
 import PushPrompt from "./PushPrompt";
@@ -23,7 +24,6 @@ import { notifyNewSignup } from "@/app/actions";
 
 const NAME_KEY = "padel-name";
 const PUSH_ASKED_KEY = "padel-push-asked";
-const PERIODS: Period[] = ["morning", "afternoon"];
 
 export default function Calendar() {
   const [mounted, setMounted] = useState(false);
@@ -331,8 +331,11 @@ export default function Calendar() {
       {/* Column headers */}
       <div className="grid grid-cols-[3.25rem_1fr_1fr] gap-1.5 px-0.5 pb-1.5 text-center text-sm font-semibold text-slate-600">
         <span />
-        <span>🌅 Mañana</span>
-        <span>🌇 Tarde</span>
+        {PERIODS.map((p) => (
+          <span key={p}>
+            {PERIOD_META[p].icon} {PERIOD_META[p].label}
+          </span>
+        ))}
       </div>
 
       {/* Week grid: one row per day */}

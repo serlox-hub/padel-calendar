@@ -2,6 +2,8 @@
 
 import type { Period, Signup } from "@/lib/types";
 import { avatarColor, initials } from "@/lib/avatar";
+import { isSameName } from "@/lib/players";
+import { PERIOD_META } from "@/lib/periods";
 
 interface Props {
   period: Period;
@@ -24,20 +26,12 @@ export default function SlotCell({
   const occupied = signups.length > 0;
   const count = signups.length;
   const time = occupied ? signups[0].match_time : null;
-  const amIIn = signups.some(
-    (s) => s.name.toLowerCase() === myName.toLowerCase()
-  );
-
-  const accent = period === "morning" ? "amber" : "indigo";
+  const amIIn = signups.some((s) => isSameName(s.name, myName));
 
   let cls = "border-slate-200 bg-white";
   if (disabled) cls = "border-slate-100 bg-slate-50";
   else if (amIIn) cls = "border-emerald-400 bg-emerald-50 ring-1 ring-emerald-300";
-  else if (occupied)
-    cls =
-      accent === "amber"
-        ? "border-amber-200 bg-amber-50"
-        : "border-indigo-200 bg-indigo-50";
+  else if (occupied) cls = PERIOD_META[period].cellTint;
 
   const shown = signups.slice(0, MAX_AVATARS);
   const extra = count - shown.length;
@@ -64,7 +58,7 @@ export default function SlotCell({
           </span>
           <div className="flex items-center">
             {shown.map((s, i) => {
-              const mine = s.name.toLowerCase() === myName.toLowerCase();
+              const mine = isSameName(s.name, myName);
               return (
                 <span
                   key={s.id}
