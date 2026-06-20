@@ -64,7 +64,7 @@ export default function SlotCell({
             <span
               className={
                 cancelled
-                  ? "text-slate-400 line-through"
+                  ? "text-slate-500 line-through"
                   : disabled
                     ? "text-slate-500"
                     : "text-slate-900"
@@ -73,7 +73,7 @@ export default function SlotCell({
               {time}
             </span>
             {cancelled && (
-              <span className="text-xs font-medium text-rose-400">
+              <span className="text-xs font-semibold text-rose-600">
                 Cancelado
               </span>
             )}
@@ -88,7 +88,7 @@ export default function SlotCell({
                   className={`flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold text-white ring-2 ${
                     mine ? "ring-emerald-500" : "ring-white"
                   } ${avatarColor(s.name)} ${i > 0 ? "-ml-2" : ""} ${
-                    muted ? "opacity-60" : ""
+                    muted ? "opacity-50 grayscale" : ""
                   }`}
                 >
                   {initials(s.name)}
@@ -103,7 +103,7 @@ export default function SlotCell({
           </div>
         </>
       ) : disabled ? (
-        <span className="text-sm text-slate-400">—</span>
+        <span className="text-sm text-slate-500">—</span>
       ) : (
         <span className="text-sm font-semibold text-emerald-700">+ Crear</span>
       )}

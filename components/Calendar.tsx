@@ -332,8 +332,13 @@ export default function Calendar() {
       {/* Header */}
       <header className="mb-4">
         <div className="flex items-center justify-between">
-          <h1 className="flex items-center gap-2 text-lg font-bold text-slate-900">
-            🎾 No puedo, tengo pádel
+          <h1 className="leading-none">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/icon.svg"
+              alt="No puedo, tengo pádel"
+              className="h-9 w-9"
+            />
           </h1>
           <div className="flex items-center gap-2">
             <PushToggle
@@ -353,13 +358,14 @@ export default function Calendar() {
         </div>
 
         {/* Week navigator */}
-        <div className="mt-4 flex items-center justify-between gap-2">
+        <div className="mt-4 flex items-center justify-between gap-2 rounded-2xl border border-slate-200 bg-slate-100 p-2 shadow-sm">
           <button
             onClick={() => setWeekOffset((w) => w - 1)}
             aria-label="Semana anterior"
-            className="rounded-xl bg-slate-100 px-5 py-3 text-2xl font-bold leading-none text-slate-700 active:scale-95"
+            className="flex min-w-[4.75rem] flex-col items-center gap-0.5 rounded-xl border border-slate-300 bg-white px-3 py-2 text-slate-700 shadow-sm active:scale-95"
           >
-            ‹
+            <span className="text-2xl font-bold leading-none">‹</span>
+            <span className="text-xs font-semibold">Anterior</span>
           </button>
           <div className="flex flex-1 flex-col items-center">
             <span className="text-lg font-semibold text-slate-900">
@@ -368,20 +374,23 @@ export default function Calendar() {
             {weekOffset !== 0 ? (
               <button
                 onClick={() => setWeekOffset(0)}
-                className="text-sm font-semibold text-emerald-700 underline"
+                className="mt-1 rounded-full bg-emerald-600 px-3 py-1 text-sm font-semibold text-white active:scale-95"
               >
                 Volver a hoy
               </button>
             ) : (
-              <span className="text-sm text-slate-600">Esta semana</span>
+              <span className="text-sm font-medium text-slate-600">
+                Esta semana
+              </span>
             )}
           </div>
           <button
             onClick={() => setWeekOffset((w) => w + 1)}
             aria-label="Semana siguiente"
-            className="rounded-xl bg-slate-100 px-5 py-3 text-2xl font-bold leading-none text-slate-700 active:scale-95"
+            className="flex min-w-[4.75rem] flex-col items-center gap-0.5 rounded-xl border border-slate-300 bg-white px-3 py-2 text-slate-700 shadow-sm active:scale-95"
           >
-            ›
+            <span className="text-2xl font-bold leading-none">›</span>
+            <span className="text-xs font-semibold">Siguiente</span>
           </button>
         </div>
       </header>
