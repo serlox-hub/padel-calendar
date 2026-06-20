@@ -20,6 +20,8 @@ notificaciones push opcionales.
 - **Notificaciones push** opcionales: cuando alguien se apunta, el resto recibe
   un aviso (aunque tengan la app cerrada). Al tocar el aviso, la app abre
   directamente el turno correspondiente.
+- **Recordatorio de partido**: la tarde anterior, quien tenga partido al día
+  siguiente recibe un aviso ("Mañana tienes partido"). Lo manda un cron diario.
 
 ## Stack
 
@@ -46,6 +48,8 @@ notificaciones push opcionales.
    Rellena:
    - `NEXT_PUBLIC_SUPABASE_URL` y `NEXT_PUBLIC_SUPABASE_ANON_KEY` (Supabase → *Project Settings → API*)
    - `NEXT_PUBLIC_VAPID_PUBLIC_KEY` y `VAPID_PRIVATE_KEY` (del paso 3)
+   - `CRON_SECRET` (opcional en local; protege el cron de recordatorios). Genera
+     uno con `openssl rand -hex 32`.
 5. Arranca en local:
    ```bash
    npm install
@@ -60,13 +64,19 @@ notificaciones push opcionales.
 
 1. Sube el repo a GitHub e impórtalo en [vercel.com](https://vercel.com)
    (o usa `npx vercel`).
-2. Añade **las 4 variables** de entorno en *Settings → Environment Variables*
-   (las mismas del `.env.local`).
+2. Añade **las variables** de entorno en *Settings → Environment Variables*
+   (las mismas del `.env.local`, incluida `CRON_SECRET`).
 3. Deploy. Cada push a `main` redespliega solo.
 
+El **recordatorio diario** se configura solo: `vercel.json` declara un cron que
+llama a `/api/cron/reminders` una vez al día (`0 17 * * *` UTC ≈ 19:00 en verano
+/ 18:00 en invierno). Vercel firma cada llamada con `CRON_SECRET`, así que basta
+con tener esa variable puesta. (En el plan Hobby el cron solo puede ser diario;
+por eso el recordatorio cubre "todo el día siguiente", no una ventana exacta.)
+
 > ⚠️ Las `NEXT_PUBLIC_*` se **incrustan al compilar**: deben existir en Vercel
-> **antes** del build. `VAPID_PRIVATE_KEY` es de servidor (no se expone al
-> cliente) y la usan las Server Actions de `app/actions.ts`.
+> **antes** del build. `VAPID_PRIVATE_KEY` y `CRON_SECRET` son de servidor (no se
+> exponen al cliente); las usan las Server Actions de `app/actions.ts` y el cron.
 
 ## Estructura
 
@@ -76,6 +86,7 @@ app/
   page.tsx          renderiza <Calendar/>
   manifest.ts       PWA manifest (instalable; necesario para push en iOS)
   actions.ts        Server Actions de push (suscribir, desuscribir, notificar)
+  api/cron/reminders/route.ts  cron diario: avisa a quien juega mañana
   icon.svg          icono de la PWA / notificaciones
 components/
   Calendar.tsx      orquesta todo: carga, realtime, acciones, semanas, modal
@@ -87,6 +98,7 @@ components/
   usePushSubscription.ts  hook: registra el service worker y gestiona la suscripción
 lib/
   supabase.ts       cliente de Supabase (cliente, con anon key)
+  push.ts           plumbing de web-push (VAPID, fan-out) — server, compartido
   dates.ts          utilidades de fechas / semanas (en hora local, no UTC)
   periods.ts        metadatos de mañana/tarde (label, icon, colores) — fuente única
   players.ts        helpers de jugador (isSameName, courtsFor)
@@ -97,6 +109,7 @@ public/
   sw.js             service worker (muestra las push y abre el turno al tocarlas)
 supabase/
   schema.sql        tablas + RLS + realtime (idempotente)
+vercel.json         cron diario del recordatorio de partido
 ```
 
 ## Modelo de datos

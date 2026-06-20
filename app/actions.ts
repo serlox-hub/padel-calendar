@@ -1,41 +1,21 @@
 "use server";
 
-import webpush from "web-push";
-import { createClient } from "@supabase/supabase-js";
 import type { Period } from "@/lib/types";
-
-const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-const publicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
-const privateKey = process.env.VAPID_PRIVATE_KEY;
-
-const configured = Boolean(url && anonKey && publicKey && privateKey);
-
-if (configured) {
-  webpush.setVapidDetails(
-    "mailto:sergio@cl4.ai",
-    publicKey as string,
-    privateKey as string
-  );
-}
-
-/** Server-side Supabase client (anon key; the table is open via RLS policies). */
-function db() {
-  return createClient(url as string, anonKey as string);
-}
-
-interface StoredSubscription {
-  endpoint: string;
-  subscription: webpush.PushSubscription;
-  name: string | null;
-}
+import {
+  pushConfigured,
+  db,
+  dayLabel,
+  PERIOD_LABEL,
+  fanOut,
+  type StoredSubscription,
+} from "@/lib/push";
 
 /** Save (or refresh) a browser's push subscription. */
 export async function subscribeUser(
-  sub: webpush.PushSubscription,
+  sub: StoredSubscription["subscription"],
   name: string
 ) {
-  if (!configured) return { success: false };
+  if (!pushConfigured) return { success: false };
   await db()
     .from("push_subscriptions")
     .upsert(
@@ -47,25 +27,9 @@ export async function subscribeUser(
 
 /** Forget a subscription when the user turns notifications off. */
 export async function unsubscribeUser(endpoint: string) {
-  if (!configured) return { success: false };
+  if (!pushConfigured) return { success: false };
   await db().from("push_subscriptions").delete().eq("endpoint", endpoint);
   return { success: true };
-}
-
-const PERIOD_LABEL: Record<Period, string> = {
-  morning: "la mañana",
-  afternoon: "la tarde",
-};
-
-function dayLabel(dateISO: string): string {
-  // Anchor at midday so the date never slips across a timezone boundary.
-  const d = new Date(`${dateISO}T12:00:00`);
-  const s = new Intl.DateTimeFormat("es-ES", {
-    weekday: "long",
-    day: "numeric",
-    month: "long",
-  }).format(d);
-  return s.charAt(0).toUpperCase() + s.slice(1);
 }
 
 /**
@@ -78,7 +42,7 @@ export async function notifyNewSignup(payload: {
   period: Period;
   matchTime: string;
 }) {
-  if (!configured) return { success: false };
+  if (!pushConfigured) return { success: false };
   const client = db();
 
   const { count } = await client
@@ -117,25 +81,6 @@ export async function notifyNewSignup(payload: {
     (s) => s.name !== payload.signerName
   );
 
-  const dead: string[] = [];
-  await Promise.all(
-    targets.map(async (s) => {
-      try {
-        await webpush.sendNotification(s.subscription, notification);
-      } catch (err: unknown) {
-        const code =
-          err && typeof err === "object" && "statusCode" in err
-            ? (err as { statusCode: number }).statusCode
-            : 0;
-        // 404/410 mean the subscription is gone for good — clean it up.
-        if (code === 404 || code === 410) dead.push(s.endpoint);
-      }
-    })
-  );
-
-  if (dead.length) {
-    await client.from("push_subscriptions").delete().in("endpoint", dead);
-  }
-
-  return { success: true, sent: targets.length - dead.length };
+  const sent = await fanOut(targets, notification);
+  return { success: true, sent };
 }

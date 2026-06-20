@@ -36,7 +36,15 @@ whoever (human or agent) edits the code next.
 - `components/{PushPrompt,PushToggle}.tsx` + `usePushSubscription.ts` — push UI
   and the hook that registers `/sw.js` and stores the subscription.
 - `app/actions.ts` — **Server Actions** for push: `subscribeUser`,
-  `unsubscribeUser`, `notifyNewSignup`. Uses `VAPID_PRIVATE_KEY` (server only).
+  `unsubscribeUser`, `notifyNewSignup`. The actual web-push plumbing (VAPID
+  setup, the `fanOut` sender that prunes dead 404/410 subs, label helpers) lives
+  in `lib/push.ts` and is shared with the cron.
+- `app/api/cron/reminders/route.ts` — **daily reminder cron.** Notifies every
+  player who has a match *tomorrow* (whole next Madrid day) — "Mañana tienes
+  partido". Triggered once a day by `vercel.json`'s cron; **stateless** (no
+  "reminded" flag), which is only safe *because* it runs once a day — don't make
+  it more frequent without adding dedupe. Guarded by `CRON_SECRET` (Vercel sends
+  it as a Bearer header). Same deep-link payload shape as `notifyNewSignup`.
 - **Notification deep-links.** `notifyNewSignup` puts the slot's `date`/`period`
   in the push payload + a `/?date=&period=` url. `public/sw.js` `notificationclick`
   either focuses an open tab and `postMessage`s `{type:"open-slot",date,period}`
@@ -44,8 +52,9 @@ whoever (human or agent) edits the code next.
   params on cold open (then strips them via `replaceState`) and listens for the
   SW message when warm — both call `openSlotByDate`, which switches week via
   `weekOffsetBetween` and opens the slot modal.
-- `lib/` — `supabase.ts` (client), `dates.ts` (week math, **local time**),
-  `avatar.ts` (deterministic initials+colour), `types.ts`.
+- `lib/` — `supabase.ts` (client), `push.ts` (server web-push plumbing, shared
+  by actions + cron), `dates.ts` (week math, **local time**), `avatar.ts`
+  (deterministic initials+colour), `types.ts`.
 - `supabase/schema.sql` — tables, RLS, realtime. Idempotent; re-runnable.
 
 Data model is documented in `README.md`. Two tables: `signups`,
@@ -82,7 +91,8 @@ npm run lint     # eslint
 
 - **Always run `npm run build` after changes** — it type-checks and catches the
   cross-file `null` narrowing / RSC boundary errors this project is prone to.
-- Env vars: 4 total (2 Supabase, 2 VAPID). `NEXT_PUBLIC_*` are inlined at build.
+- Env vars: 5 total (2 Supabase, 2 VAPID, `CRON_SECRET`). `NEXT_PUBLIC_*` are
+  inlined at build; `VAPID_PRIVATE_KEY` and `CRON_SECRET` are server-only.
   `next.config.ts` has `allowedDevOrigins` for tunnel/LAN testing — dev only.
 - **Testing on a phone from WSL2:** the WSL NAT IP isn't reachable from the LAN,
   and `networkingMode=mirrored` needs Windows 11 (this machine is Windows 10).
